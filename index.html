@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Queue Log · Simulation & Modeling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1F4; --surface:#FFFFFF; --ink:#18263A; --muted:#5B6B7E; --line:#CBD5DF;
+  --signal:#F4C430; --signal-ink:#2B2300; --serve:#1F7A5C; --serve-soft:#DDF0E8; --warn:#B4442E;
+  --font:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#111922; --surface:#19232F; --ink:#E4EAF0; --muted:#94A3B4; --line:#2C3A4A;
+  --signal:#F4C430; --signal-ink:#2B2300; --serve:#43C095; --serve-soft:#183A30; --warn:#E07A62; } }
+:root[data-theme="dark"]{
+  --paper:#111922; --surface:#19232F; --ink:#E4EAF0; --muted:#94A3B4; --line:#2C3A4A;
+  --signal:#F4C430; --signal-ink:#2B2300; --serve:#43C095; --serve-soft:#183A30; --warn:#E07A62; }
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--font)}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 24px;justify-content:space-between;margin-bottom:20px}
+h1{font:700 2.4rem/1 var(--cond);margin:0;letter-spacing:.01em}
+h1 small{display:block;font:500 1rem/1.4 var(--font);color:var(--muted);margin-top:6px;letter-spacing:0}
+h2{font:600 1.5rem/1.2 var(--cond);margin:0 0 12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input[type=text],input[type=number]{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+input[type=number]{width:100%}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.serve{background:var(--serve);border-color:var(--serve);color:#fff}
+.btn.danger{color:var(--warn)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.small{padding:4px 10px;font-size:.88rem}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.badge{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.badge.cloud i{background:var(--serve)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:20px}
+.panel-new{display:none;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px}
+.panel-new.open{display:flex}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+
+/* live desk */
+.desk{display:grid;grid-template-columns:minmax(220px,280px) 1fr;gap:24px}
+@media (max-width:760px){.desk{grid-template-columns:1fr}}
+.dispenser{background:var(--signal);color:var(--signal-ink);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.dispenser .num{font:700 4.6rem/0.9 var(--cond);font-variant-numeric:tabular-nums}
+.dispenser .lbl{font-weight:600}
+.dispenser .clock{font:600 1.1rem var(--cond);font-variant-numeric:tabular-nums;opacity:.8}
+.dispenser button{background:var(--signal-ink);color:var(--signal);border:0;border-radius:6px;padding:14px;font:700 1.25rem var(--cond);cursor:pointer;letter-spacing:.02em}
+.dispenser button:active{transform:translateY(1px)}
+.line{display:flex;gap:8px;flex-wrap:wrap;min-height:64px;align-items:flex-start;margin-bottom:18px}
+.ticket{background:var(--paper);border:1px dashed var(--muted);border-radius:6px;padding:6px 10px;min-width:76px;position:relative}
+.ticket b{font:700 1.4rem/1 var(--cond);display:block}
+.ticket span{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticket button{position:absolute;top:2px;right:4px;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1}
+.servers{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.server{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.server.busy{background:var(--serve-soft);border-color:var(--serve)}
+.server h3{margin:0;font:600 1.05rem var(--cond)}
+.server .who{font:700 1.8rem/1 var(--cond);font-variant-numeric:tabular-nums}
+.server .meta{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:.95rem}
+
+/* stats */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0}
+.kpis div{padding:12px 14px;box-shadow:1px 1px 0 var(--line)}
+.kpis dt{font-size:.85rem;color:var(--muted)}
+.kpis dd{margin:2px 0 0;font:600 1.7rem/1.1 var(--cond);font-variant-numeric:tabular-nums}
+.kpis dd small{font:400 .8rem var(--font);color:var(--muted);margin-left:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.93rem}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:.82rem;vertical-align:bottom;white-space:normal;min-width:64px}
+th:first-child,td:first-child{text-align:left}
+tr.live td{color:var(--muted)}
+.note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:none;border-radius:999px;padding:3px 12px;cursor:pointer;font-size:.88rem}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+svg{display:block;max-width:100%;height:auto}
+.entry{display:grid;grid-template-columns:repeat(4,minmax(90px,1fr)) auto;gap:8px;align-items:end;margin:14px 0}
+@media (max-width:640px){.entry{grid-template-columns:1fr 1fr}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-size:.92rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+.welcome{text-align:center;padding:40px 20px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Queue Log<small>Record arrivals, waiting and service, then compare with M/M/c theory.</small></h1>
+    <div class="bar">
+      <select id="sessionSel" aria-label="Observation session"></select>
+      <button class="btn" id="newSessBtn">New session</button>
+      <span class="badge" id="badge"><i></i>Connecting…</span>
+    </div>
+  </header>
+
+  <section id="newPanelWrap" style="display:none">
+    <h2>New observation session</h2>
+    <div class="panel-new open">
+      <label class="f" style="flex:2 1 220px">Name<input type="text" id="newName" placeholder="e.g. Library desk, Tue 12:00"></label>
+      <label class="f" style="flex:0 1 120px">Servers (c)<input type="number" id="newServers" min="1" max="12" value="1"></label>
+      <button class="btn primary" id="createSess">Create session</button>
+      <button class="btn" id="cancelSess">Cancel</button>
+    </div>
+    <p class="note">The clock starts when you create the session. All times are stored in minutes from that moment.</p>
+  </section>
+
+  <div id="app"><section class="welcome"><p class="empty">Loading…</p></section></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const f2=x=>(x==null||!isFinite(x))?"—":x.toFixed(2);
+const pct=x=>(x==null||!isFinite(x))?"—":(x*100).toFixed(1)+"%";
+const clock=min=>{if(min==null||!isFinite(min))return"—";const s=Math.max(0,Math.round(min*60));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;return(h?h+":"+String(m).padStart(2,"0"):m)+":"+String(ss).padStart(2,"0")};
+const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+const sd=a=>{if(a.length<2)return null;const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))};
+
+let toastT;function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2800)}
+function errMsg(e){const c=e&&e.code;
+  if(c==="invalid_argument")return"This change wasn't saved. You may only have view access to this log.";
+  if(c==="quota_exceeded")return"The database is full. Delete an old session to make room.";
+  if(c==="resource_exhausted")return"Too many changes at once. Wait a moment and try again.";
+  return"Couldn't reach the database. Check your connection and try again."}
+
+/* ---------- storage: shared db on claude.ai, browser storage elsewhere (e.g. Vercel) ---------- */
+class LocalStore{
+  constructor(){this.l={};this.mode="local"}
+  k(c){return"queuelog:"+c}
+  read(c){try{return JSON.parse(localStorage.getItem(this.k(c))||"[]")}catch(e){return[]}}
+  write(c,a){try{localStorage.setItem(this.k(c),JSON.stringify(a))}catch(e){toast("Couldn't save in this browser.")}(this.l[c]||[]).forEach(f=>f(this.read(c)))}
+  subscribe(c,cb){(this.l[c]=this.l[c]||[]).push(cb);cb(this.read(c));window.addEventListener("storage",e=>{if(e.key===this.k(c))cb(this.read(c))})}
+  async add(c,d){const a=this.read(c),id=uid();a.push({id,...d});this.write(c,a);return id}
+  async update(c,id,p){this.write(c,this.read(c).map(x=>x.id===id?{...x,...p}:x))}
+  async remove(c,id){this.write(c,this.read(c).filter(x=>x.id!==id))}
+}
+class CloudStore{
+  constructor(db){this.db=db;this.mode="cloud"}
+  subscribe(c,cb){this.db.collection(c).onSnapshot(s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),e=>toast(errMsg(e)))}
+  async add(c,d){const id=uid();await this.db.collection(c).doc(id).set(d);return id}
+  async update(c,id,p){await this.db.collection(c).doc(id).update(p)}
+  async remove(c,id){await this.db.collection(c).doc(id).delete()}
+}
+let store=null;
+async function safe(fn){try{return await fn()}catch(e){toast(errMsg(e));return null}}
+
+/* ---------- state ---------- */
+const S={sessions:[],customers:[],sid:null,editing:null,hist:"service",loaded:{s:false,c:false}};
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const sess=()=>S.sessions.find(s=>s.id===S.sid)||null;
+const nowMin=s=>(Date.now()-s.t0)/60000;
+const custOf=sid=>S.customers.filter(c=>c.session===sid);
+
+/* ---------- analysis ---------- */
+function analyze(list,c){
+  const rows=[...list].sort((a,b)=>a.arrival-b.arrival).map((x,i,arr)=>{
+    const r={...x,n:i+1,ia:i?x.arrival-arr[i-1].arrival:null};
+    if(x.start!=null)r.wait=x.start-x.arrival;
+    if(x.start!=null&&x.end!=null){r.svc=x.end-x.start;r.sys=x.end-x.arrival}
+    return r});
+  const lastEnd={};
+  rows.filter(r=>r.start!=null).sort((a,b)=>a.start-b.start).forEach(r=>{const k=r.server||1;r.idle=Math.max(0,r.start-(lastEnd[k]??0));lastEnd[k]=r.end??r.start});
+  const done=rows.filter(r=>r.svc!=null);
+  const ias=rows.map(r=>r.ia).filter(x=>x!=null), svcs=done.map(r=>r.svc), waits=done.map(r=>r.wait), syss=done.map(r=>r.sys);
+  const st={n:rows.length,done:done.length,c};
+  st.meanIA=mean(ias);st.lambda=st.meanIA?1/st.meanIA:null;st.cvIA=st.meanIA&&sd(ias)!=null?sd(ias)/st.meanIA:null;
+  st.meanS=mean(svcs);st.mu=st.meanS?1/st.meanS:null;st.cvS=st.meanS&&sd(svcs)!=null?sd(svcs)/st.meanS:null;
+  st.Wq=mean(waits);st.W=mean(syss);
+  st.pWait=done.length?done.filter(r=>r.wait>1e-6).length/done.length:null;
+  st.maxWait=waits.length?Math.max(...waits):null;
+  // time-weighted queue length over completed customers
+  const ev=[];done.forEach(r=>{ev.push({t:r.arrival,dq:1,dn:1});ev.push({t:r.start,dq:-1,dn:0});ev.push({t:r.end,dq:0,dn:-1})});
+  ev.sort((a,b)=>a.t-b.t||a.dq-b.dq);
+  let q=0,n=0,aq=0,an=0,maxQ=0,prev=ev.length?ev[0].t:0;const series=[];
+  ev.forEach(e=>{aq+=q*(e.t-prev);an+=n*(e.t-prev);prev=e.t;q+=e.dq;n+=e.dn;maxQ=Math.max(maxQ,q);series.push([e.t,q])});
+  const T=ev.length?ev[ev.length-1].t-ev[0].t:0;
+  st.T=T;st.Lq=T>0?aq/T:null;st.L=T>0?an/T:null;st.maxQ=done.length?maxQ:null;
+  st.util=T>0?svcs.reduce((s,x)=>s+x,0)/(c*T):null;
+  st.series=series;st.ias=ias;st.svcs=svcs;st.waits=waits;
+  return{rows,st}
+}
+function mmc(l,m,c){
+  if(!l||!m)return null;const a=l/m,rho=a/c;if(rho>=1)return{rho,unstable:true};
+  let sum=0,fact=1;for(let k=0;k<c;k++){if(k>0)fact*=k;sum+=a**k/fact}
+  let cfact=1;for(let k=2;k<=c;k++)cfact*=k;
+  const tail=a**c/(cfact*(1-rho));const P0=1/(sum+tail);
+  const pWait=tail*P0,Lq=P0*a**c*rho/(cfact*(1-rho)**2),Wq=Lq/l,W=Wq+1/m,L=l*W;
+  return{rho,P0,pWait,Lq,Wq,W,L}
+}
+
+/* ---------- rendering ---------- */
+function render(){
+  if(!S.loaded.s||!S.loaded.c)return;
+  const sel=$("#sessionSel");
+  sel.innerHTML=S.sessions.length?S.sessions.map(s=>`<option value="${esc(s.id)}"${s.id===S.sid?" selected":""}>${esc(s.name)} (c=${s.servers})</option>`).join(""):`<option>No sessions yet</option>`;
+  sel.disabled=!S.sessions.length;
+  const s=sess(),app=$("#app");
+  const keep={};["eA","eS","eE","eK"].forEach(id=>{const el=document.getElementById(id);if(el)keep[id]=el.value});
+  const focusId=document.activeElement&&document.activeElement.id;
+  if(!s){app.innerHTML=`<section class="welcome"><h2>Start your first observation</h2><p class="empty">A session is one period of watching a queue: a cafeteria line, a bank counter, a help desk.</p><button class="btn primary" id="welcomeNew">New session</button></section>`;$("#welcomeNew").onclick=openNew;return}
+  const {rows,st}=analyze(custOf(s.id),s.servers);
+  app.innerHTML=`
+  <section>
+    <h2>Live desk</h2>
+    <div class="desk">
+      <div class="dispenser">
+        <div class="lbl">Next ticket</div>
+        <div class="num" id="nextNum">${rows.length+1}</div>
+        <div class="clock" id="clock">Clock ${clock(nowMin(s))}</div>
+        <button id="arrive">Customer arrived</button>
+      </div>
+      <div>
+        <h3 style="margin:0 0 8px;font:600 1.1rem var(--cond)">Waiting line</h3>
+        <div class="line" id="line"></div>
+        <h3 style="margin:0 0 8px;font:600 1.1rem var(--cond)">Servers</h3>
+        <div class="servers" id="servers"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Performance measures</h2>
+    <dl class="kpis">
+      ${kpi("Arrivals",st.n,`${st.done} served`)}
+      ${kpi("Mean interarrival",f2(st.meanIA),"min")}
+      ${kpi("Arrival rate λ",f2(st.lambda),"per min")}
+      ${kpi("Mean service time",f2(st.meanS),"min")}
+      ${kpi("Service rate μ",f2(st.mu),"per min")}
+      ${kpi("Avg wait in queue Wq",f2(st.Wq),"min")}
+      ${kpi("Avg time in system W",f2(st.W),"min")}
+      ${kpi("Prob. of waiting",pct(st.pWait),"")}
+      ${kpi("Max wait",f2(st.maxWait),"min")}
+      ${kpi("Avg queue length Lq",f2(st.Lq),"time-avg")}
+      ${kpi("Avg number in system L",f2(st.L),"time-avg")}
+      ${kpi("Max queue length",st.maxQ??"—","")}
+      ${kpi("Server utilization",pct(st.util),"")}
+      ${kpi("CV interarrival",f2(st.cvIA),"≈1 if exponential")}
+      ${kpi("CV service",f2(st.cvS),"≈1 if exponential")}
+    </dl>
+    <p class="note">Measures use completed customers only. Lq, L and utilization are time-averages from first arrival to last departure (${f2(st.T)} min). Little's law check: λ·W = ${f2(st.lambda&&st.W!=null?st.lambda*st.W:null)} vs L = ${f2(st.L)}.</p>
+    <div class="two">
+      <div>
+        <h3 style="margin:0 0 8px;font:600 1.1rem var(--cond)">Observed vs M/M/${s.servers} theory</h3>
+        ${theoryTable(st,s.servers)}
+      </div>
+      <div>
+        <h3 style="margin:0 0 8px;font:600 1.1rem var(--cond)">Queue length over time</h3>
+        ${stepChart(st.series)}
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <div class="tabs" role="group" aria-label="Histogram">
+        ${["interarrival","service","wait"].map(k=>`<button data-h="${k}" aria-pressed="${S.hist===k}">${{interarrival:"Interarrival times",service:"Service times",wait:"Waiting times"}[k]}</button>`).join("")}
+      </div>
+      ${histogram(S.hist==="interarrival"?st.ias:S.hist==="service"?st.svcs:st.waits)}
+    </div>
+  </section>
+
+  <section>
+    <div class="bar" style="justify-content:space-between">
+      <h2 style="margin:0">Simulation table</h2>
+      <div class="bar">
+        <button class="btn" id="csv">Export CSV</button>
+        ${rows.length?"":`<button class="btn" id="sample">Fill with sample data</button>`}
+        <button class="btn danger" id="delSess">Delete session</button>
+      </div>
+    </div>
+    <div class="entry" id="entry">
+      <label class="f">Arrival (min)<input type="number" step="0.01" min="0" id="eA"></label>
+      <label class="f">Service begins<input type="number" step="0.01" min="0" id="eS"></label>
+      <label class="f">Service ends<input type="number" step="0.01" min="0" id="eE"></label>
+      <label class="f">Server<input type="number" min="1" max="${s.servers}" value="1" id="eK"></label>
+      <div class="bar"><button class="btn primary" id="eSave">${S.editing?"Save changes":"Add customer"}</button>${S.editing?`<button class="btn" id="eCancel">Cancel</button>`:""}</div>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Customer</th><th>Interarrival</th><th>Arrival</th><th>Server</th><th>Service begins</th><th>Wait in queue</th><th>Service time</th><th>Service ends</th><th>Time in system</th><th>Server idle before</th><th></th></tr></thead>
+      <tbody>${rows.length?rows.map(r=>`<tr class="${r.end==null?"live":""}"><td>${r.n}</td><td>${f2(r.ia)}</td><td>${f2(r.arrival)}</td><td>${r.start!=null?(r.server||1):"—"}</td><td>${f2(r.start)}</td><td>${f2(r.wait)}</td><td>${f2(r.svc)}</td><td>${r.end!=null?f2(r.end):(r.start!=null?"in service":"waiting")}</td><td>${f2(r.sys)}</td><td>${f2(r.idle)}</td><td><button class="btn small" data-edit="${esc(r.id)}">Edit</button> <button class="btn small danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join(""):`<tr><td colspan="11" class="empty" style="text-align:left">No customers yet. Use the live desk, type in observations above, or fill with sample data.</td></tr>`}</tbody>
+    </table></div>
+    <p class="note">All times in minutes from session start. Rows in grey are still waiting or in service.</p>
+  </section>`;
+  wire(s,rows);renderLive();
+  Object.entries(keep).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
+  if(focusId&&document.getElementById(focusId))document.getElementById(focusId).focus();
+}
+const kpi=(l,v,u)=>`<div><dt>${l}</dt><dd>${v}${u?`<small>${u}</small>`:""}</dd></div>`;
+function theoryTable(st,c){
+  const t=mmc(st.lambda,st.mu,c);
+  if(!t)return`<p class="empty">Needs at least two arrivals and one completed service.</p>`;
+  if(t.unstable)return`<p class="empty">ρ = λ/(cμ) = ${f2(t.rho)} ≥ 1, so the theoretical queue grows without bound. Steady-state formulas don't apply.</p>`;
+  const r=(n,o,th)=>`<tr><td>${n}</td><td>${o}</td><td>${th}</td></tr>`;
+  return`<div class="scroll"><table><thead><tr><th>Measure</th><th>Observed</th><th>Theory</th></tr></thead><tbody>
+  ${r("Utilization ρ",pct(st.util),pct(t.rho))}${r("P(wait)",pct(st.pWait),pct(t.pWait))}
+  ${r("Lq",f2(st.Lq),f2(t.Lq))}${r("L",f2(st.L),f2(t.L))}${r("Wq (min)",f2(st.Wq),f2(t.Wq))}${r("W (min)",f2(st.W),f2(t.W))}
+  ${r("P0 (system empty)","—",pct(t.P0))}</tbody></table></div>
+  <p class="note">Theory assumes Poisson arrivals and exponential service with the λ and μ estimated from your data.</p>`
+}
+function stepChart(series){
+  if(series.length<2)return`<p class="empty">Appears once customers complete service.</p>`;
+  const W=520,H=200,p={l:34,r:10,t:10,b:28},t0=series[0][0],t1=series[series.length-1][0],qm=Math.max(1,...series.map(x=>x[1]));
+  const x=t=>p.l+(t-t0)/((t1-t0)||1)*(W-p.l-p.r),y=q=>H-p.b-q/qm*(H-p.t-p.b);
+  let d=`M${x(t0)},${y(0)}`,last=0;series.forEach(([t,q])=>{d+=`H${x(t)}V${y(q)}`;last=q});
+  let grid="";for(let q=0;q<=qm;q+=Math.max(1,Math.ceil(qm/4)))grid+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y(q)}" y2="${y(q)}" stroke="var(--line)"/><text x="${p.l-6}" y="${y(q)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${q}</text>`;
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Queue length over time">${grid}<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="${p.l}" y="${H-8}" font-size="11" fill="var(--muted)">${f2(t0)} min</text><text x="${W-p.r}" y="${H-8}" font-size="11" text-anchor="end" fill="var(--muted)">${f2(t1)} min</text></svg>`
+}
+function histogram(vals){
+  if(vals.length<3)return`<p class="empty">Needs at least three values.</p>`;
+  const k=Math.max(3,Math.ceil(Math.log2(vals.length)+1)),mn=Math.min(...vals),mx=Math.max(...vals),w=(mx-mn)/k||1;
+  const bins=Array(k).fill(0);vals.forEach(v=>bins[Math.min(k-1,Math.floor((v-mn)/w))]++);
+  const W=1000,H=200,p={l:34,r:10,t:10,b:28},bm=Math.max(...bins),bw=(W-p.l-p.r)/k;
+  const bars=bins.map((b,i)=>{const h=b/bm*(H-p.t-p.b);return`<rect x="${p.l+i*bw+2}" y="${H-p.b-h}" width="${bw-4}" height="${h}" fill="var(--signal)" stroke="var(--signal-ink)" stroke-opacity=".25"><title>${f2(mn+i*w)}–${f2(mn+(i+1)*w)} min: ${b}</title></rect><text x="${p.l+i*bw+bw/2}" y="${H-p.b-h-4}" text-anchor="middle" font-size="11" fill="var(--muted)">${b||""}</text>`}).join("");
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Histogram">${bars}<line x1="${p.l}" x2="${W-p.r}" y1="${H-p.b}" y2="${H-p.b}" stroke="var(--line)"/><text x="${p.l}" y="${H-8}" font-size="12" fill="var(--muted)">${f2(mn)} min</text><text x="${W-p.r}" y="${H-8}" font-size="12" text-anchor="end" fill="var(--muted)">${f2(mx)} min</text></svg><p class="note">n = ${vals.length}, mean ${f2(mean(vals))}, sd ${f2(sd(vals))} min.</p>`
+}
+function renderLive(){
+  const s=sess();if(!s||!$("#line"))return;
+  const now=nowMin(s),list=custOf(s.id).sort((a,b)=>a.arrival-b.arrival),num=new Map(list.map((c,i)=>[c.id,i+1]));
+  const waiting=list.filter(c=>c.start==null);
+  $("#clock").textContent="Clock "+clock(now);
+  $("#line").innerHTML=waiting.length?waiting.map(c=>`<div class="ticket"><b>${num.get(c.id)}</b><span>waiting ${clock(now-c.arrival)}</span><button aria-label="Remove ticket ${num.get(c.id)} (left without service)" data-balk="${esc(c.id)}">×</button></div>`).join(""):`<p class="empty">Nobody waiting.</p>`;
+  let h="";for(let k=1;k<=s.servers;k++){const cur=list.find(c=>c.start!=null&&c.end==null&&(c.server||1)===k);
+    h+=cur?`<div class="server busy"><h3>Server ${k}</h3><div class="who">#${num.get(cur.id)}</div><div class="meta">in service ${clock(now-cur.start)}</div><button class="btn serve" data-finish="${esc(cur.id)}">Finish service</button></div>`
+          :`<div class="server"><h3>Server ${k}</h3><div class="who" style="color:var(--muted)">Idle</div><div class="meta">&nbsp;</div><button class="btn primary" data-call="${k}" ${waiting.length?"":"disabled"}>Call next</button></div>`}
+  $("#servers").innerHTML=h;
+}
+function wire(s,rows){
+  $("#arrive").onclick=()=>safe(()=>store.add("customers",{session:s.id,arrival:round(nowMin(s)),start:null,end:null,server:null,origin:"live"}));
+  $("#app").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+    if(d.call){const head=custOf(s.id).filter(c=>c.start==null).sort((a,b)=>a.arrival-b.arrival)[0];if(head)await safe(()=>store.update("customers",head.id,{start:round(Math.max(nowMin(s),head.arrival)),server:+d.call}))}
+    else if(d.finish){const c=S.customers.find(x=>x.id===d.finish);if(c)await safe(()=>store.update("customers",c.id,{end:round(Math.max(nowMin(s),c.start))}))}
+    else if(d.balk){if(confirm("Remove this ticket? Use this when a customer leaves without being served."))await safe(()=>store.remove("customers",d.balk))}
+    else if(d.del){if(confirm("Delete this customer record?"))await safe(()=>store.remove("customers",d.del))}
+    else if(d.edit){const c=S.customers.find(x=>x.id===d.edit);if(c){S.editing=c.id;render();$("#eA").value=c.arrival??"";$("#eS").value=c.start??"";$("#eE").value=c.end??"";$("#eK").value=c.server||1;$("#eA").focus()}}
+    else if(d.h){S.hist=d.h;render()}
+  };
+  $("#eSave").onclick=saveEntry;
+  if($("#eCancel"))$("#eCancel").onclick=()=>{S.editing=null;render()};
+  $("#csv").onclick=()=>exportCSV(s,rows);
+  if($("#sample"))$("#sample").onclick=()=>fillSample(s);
+  $("#delSess").onclick=async()=>{if(!confirm(`Delete "${s.name}" and all ${rows.length} customer records? This can't be undone.`))return;
+    for(const c of custOf(s.id))await safe(()=>store.remove("customers",c.id));await safe(()=>store.remove("sessions",s.id));S.sid=null;toast("Session deleted.")};
+}
+const round=x=>Math.round(x*10000)/10000;
+async function saveEntry(){
+  const s=sess(),v=id=>{const x=$(id).value.trim();return x===""?null:+x};
+  const a=v("#eA"),st=v("#eS"),en=v("#eE"),k=Math.min(s.servers,Math.max(1,v("#eK")||1));
+  if(a==null||a<0)return toast("Enter an arrival time of 0 or more.");
+  if(st!=null&&st<a)return toast("Service can't begin before the customer arrives.");
+  if(en!=null&&(st==null||en<st))return toast("Service end needs a start time and must come after it.");
+  const data={arrival:a,start:st,end:en,server:st!=null?k:null};
+  if(S.editing){const id=S.editing;S.editing=null;await safe(()=>store.update("customers",id,data));toast("Changes saved.")}
+  else{await safe(()=>store.add("customers",{session:s.id,...data,origin:"manual"}));toast("Customer added.")}
+}
+async function fillSample(s){
+  // simple multi-server simulation: exp interarrival mean 4 min, exp service mean 3*c... scaled so rho≈0.75
+  const c=s.servers,meanIA=4,meanS=3*c,exp=m=>-m*Math.log(1-Math.random());
+  let t=0;const free=Array(c).fill(0);
+  for(let i=0;i<20;i++){t+=exp(meanIA);let k=free.indexOf(Math.min(...free));const st=Math.max(t,free[k]);const en=st+exp(meanS);free[k]=en;
+    const r=await safe(()=>store.add("customers",{session:s.id,arrival:round(t),start:round(st),end:round(en),server:k+1,origin:"sample"}));if(r==null)break}
+  toast("Added 20 simulated customers.");
+}
+async function exportCSV(s,rows){
+  const head=["customer","interarrival","arrival","server","service_begins","wait_in_queue","service_time","service_ends","time_in_system","server_idle_before"];
+  const val=x=>x==null||!isFinite(x)?"":(+x).toFixed(4);
+  const csv=[head.join(",")].concat(rows.map(r=>[r.n,val(r.ia),val(r.arrival),r.start!=null?(r.server||1):"",val(r.start),val(r.wait),val(r.svc),val(r.end),val(r.sys),val(r.idle)].join(","))).join("\n");
+  const name=(s.name.replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"-")||"queue")+".csv";
+  if(window.claude&&window.claude.use){const dl=await window.claude.use("downloads").catch(()=>null);
+    if(dl){try{await dl.save({filename:name,data:csv})}catch(e){if(e&&e.code!=="cancelled")toast("Download didn't start.")}return}}
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function openNew(){$("#newPanelWrap").style.display="";$("#newName").focus()}
+$("#newSessBtn").onclick=openNew;
+$("#cancelSess").onclick=()=>{$("#newPanelWrap").style.display="none"};
+$("#createSess").onclick=async()=>{
+  const name=$("#newName").value.trim()||"Session "+(S.sessions.length+1),servers=Math.min(12,Math.max(1,parseInt($("#newServers").value)||1));
+  const id=await safe(()=>store.add("sessions",{name,servers,t0:Date.now(),createdAt:Date.now()}));
+  if(id){S.sid=id;lsSet("queuelog:sid",id);$("#newPanelWrap").style.display="none";$("#newName").value="";render()}
+};
+$("#sessionSel").onchange=e=>{S.sid=e.target.value;S.editing=null;lsSet("queuelog:sid",S.sid);render()};
+setInterval(renderLive,1000);
+
+/* ---------- boot ---------- */
+(async function boot(){
+  let db=null;
+  if(window.claude&&typeof window.claude.use==="function"){try{db=await window.claude.use("db")}catch(e){db=null}}
+  store=db?new CloudStore(db):new LocalStore();
+  const b=$("#badge");b.className="badge "+store.mode;b.innerHTML=`<i></i>${store.mode==="cloud"?"Shared database":"Saved in this browser"}`;
+  store.subscribe("sessions",list=>{S.sessions=list.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));S.loaded.s=true;
+    if(!S.sessions.some(s=>s.id===S.sid)){const saved=lsGet("queuelog:sid");S.sid=S.sessions.some(s=>s.id===saved)?saved:(S.sessions.length?S.sessions[S.sessions.length-1].id:null)}render()});
+  store.subscribe("customers",list=>{S.customers=list;S.loaded.c=true;render()});
+})();
+})();
+</script>
+</body>
+</html>
