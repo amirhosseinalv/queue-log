@@ -12,3 +12,4 @@ Option B (CLI):
 
 When hosted on Vercel, data is saved in each visitor's browser (localStorage). Use Export CSV to share data.
 # queue-log
+# queue-log
